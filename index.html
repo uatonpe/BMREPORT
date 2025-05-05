@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anik Fin - व्यवस्थापक दैनिक अहवाल (v4.8 - Local Storage)</title>
+    <!-- jsPDF Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- jsPDF AutoTable Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+     <!-- html2canvas (ONLY for Header Image Capture - Optional) -->
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* Base Styles (Keep similar) */
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 15px; color: #333; font-size: 14px; }
+        .container { max-width: 1200px; margin: 15px auto; background-color: #ffffff; padding: 20px 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); border: 1px solid #ddd; }
+        #reportContent { background-color: #fff; padding: 15px; }
+
+        /* Header Image Styles */
+        .header { margin-bottom: 20px; line-height: 0; text-align: center; }
+        .header img { max-width: 100%; height: auto; display: inline-block; }
+
+        h2.report-title { text-align: center; color: #333; font-weight: bold; margin-bottom: 15px; font-size: 1.4em; }
+
+        /* Info Section Styles */
+        .info-section { margin-bottom: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;}
+        .info-section label { font-weight: bold; min-width: 150px; text-align: right; padding-right: 10px; flex-shrink: 0;}
+        .info-section input[type="text"],
+        .info-section input[type="date"],
+        .info-section select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1; min-width: 200px;}
+
+        /* Table Styles */
+        .report-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 0.9em; table-layout: fixed; }
+        .report-table th, .report-table td { border: 1px solid #a9c6e2; padding: 5px; text-align: center; vertical-align: middle; overflow-wrap: break-word; word-wrap: break-word; }
+        .report-table thead { border-bottom: 2px solid #0056b3; }
+        .report-table thead th { background-color: #e8f0fe; font-weight: bold; color: #003366; white-space: normal; padding: 6px 4px; position: relative; }
+        .report-table thead tr:first-child th { border-bottom-width: 1.5px; border-bottom-color: #8baed1; }
+        .report-table thead tr:last-child th { font-size: 0.85em; font-weight: bold; color: #335b85; background-color: #f5f9ff; padding: 3px 4px; border: none; border-right: 1px solid #a9c6e2 !important; border-top: 1px solid #a9c6e2 !important; }
+        .report-table thead tr:last-child th:last-child { border-right: none !important; }
+        .report-table thead th[rowspan="2"] { vertical-align: middle; border-bottom-width: 1px; border-bottom-color: #a9c6e2; }
+        .report-table tbody td:first-child, .report-table thead th[rowspan="2"]:first-child { text-align: left; font-weight: bold; background-color: #f8f9fa; width: 7%; vertical-align: middle; }
+        .report-table thead th[rowspan="2"]:last-child, .report-table tbody td:last-child { width: 7%; vertical-align: middle; }
+        .report-table th:nth-child(2), .report-table td:nth-child(2), .report-table th:nth-child(4), .report-table td:nth-child(4), .report-table th:nth-child(6), .report-table td:nth-child(6), .report-table th:nth-child(8), .report-table td:nth-child(8) { width: 8%; }
+        .report-table th:nth-child(3), .report-table td:nth-child(3), .report-table th:nth-child(5), .report-table td:nth-child(5), .report-table th:nth-child(7), .report-table td:nth-child(7), .report-table th:nth-child(9), .report-table td:nth-child(9) { width: 13%; }
+        .report-table input[type="number"] { width: 95%; padding: 4px; border: 1px solid #ccc; border-radius: 3px; text-align: right; font-size: 1em; -moz-appearance: textfield; box-sizing: border-box; }
+        .report-table input[type="number"]::-webkit-outer-spin-button,
+        .report-table input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* --- Style for read-only morning fields --- */
+        .morning-plan-readonly input[type="number"] {
+            background-color: #e9ecef; /* Grey background */
+            color: #495057;
+            cursor: not-allowed; /* Indicate non-editable */
+            border-color: #ced4da;
+        }
+
+
+        h3.section-title { margin-top: 30px; margin-bottom: 10px; font-size: 1.2em; color: #0056b3; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+
+        /* Analysis Section */
+        .analysis-section { margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #f9f9f9; }
+        #analysisOutput { font-family: monospace; font-size: 0.95em; line-height: 1.6; color: #444; white-space: pre-wrap; max-height: 250px; overflow-y: auto; }
+        #analysisOutput .analysis-point { margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px dotted #ccc; }
+        #analysisOutput .analysis-point:last-child { border-bottom: none; margin-bottom: 0; }
+        #analysisOutput .shortfall { color: #dc3545; }
+        #analysisOutput .exceeded { color: #28a745; }
+
+        /* Button Group, Output Area, Footer */
+        .button-group { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
+        .button-group button { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; transition: background-color 0.3s ease; margin: 5px 10px; }
+        .button-group button:hover { background-color: #0056b3; }
+        .button-group button.pdf-button { background-color: #dc3545; }
+        .button-group button.pdf-button:hover { background-color: #c82333; }
+        .button-group button.whatsapp-button { background-color: #28a745; }
+        .button-group button.whatsapp-button:hover { background-color: #218838; }
+        #reportOutputContainer { margin-top: 30px; display: none; border: 1px dashed #ccc; padding: 15px; background: #f9f9f9;}
+        #reportOutput { white-space: pre-wrap; font-family: monospace; font-size: 0.95em; }
+        .footer { text-align: center; margin-top: 40px; font-size: 0.9em; color: #777; }
+
+        /* Print styles */
+        @media print { /* Same as v4.5 */ }
+        .pdf-morning-mode .evening-content-wrapper, .pdf-morning-mode .analysis-section { display: none !important; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Add ID for easier access -->
+        <div id="reportContentArea">
+            <!-- IMAGE HEADER -->
+            <div class="header" id="pdfHeaderImageContainer">
+                 <img src="anik_header.jpg" id="headerImage" alt="Anik Financial Services Pvt. Ltd. Banner">
+            </div>
+
+            <h2 class="report-title">MANAGER DAILY REPORT</h2>
+
+            <!-- Basic Info & Report Type Selection -->
+            <div class="info-section"> <label for="managerName">NAME OF THE MANAGER:</label> <select id="managerName" name="managerName" required onchange="handleManagerChange()"> <option value="">-- Select Manager --</option> <option value="Balaji Shendge">Balaji Shendge</option> <option value="Atual Chilwant">Atual Chilwant</option> <option value="Bhikaji Jadhav">Bhikaji Jadhav</option> </select> </div>
+            <!-- Add onchange handler to date input -->
+            <div class="info-section"> <label for="reportDate">DATE OF REPORT:</label> <input type="date" id="reportDate" name="reportDate" required onchange="handleDateChange()"> </div>
+             <div class="info-section" id="reportTypeSelector"> <label for="reportType">REPORT TYPE:</label> <select id="reportType" name="reportType" onchange="updateReportView()"> <option value="morning">Morning Plan Only</option> <option value="evening" selected>Evening Actuals & Analysis</option> </select> </div>
+
+
+            <!-- Morning Plan Table -->
+            <h3 class="section-title" id="morningPlanTitle">Morning Plan</h3>
+             <!-- Add ID to morning table for easy targeting -->
+            <table class="report-table" id="morningPlanTable">
+                 <thead> <tr> <th rowspan="2">Name of Staff</th> <th colspan="2">Today Recovery Target</th> <th colspan="2">Today Disbursement Target</th> <th colspan="2">Today Appraisal Target</th> <th colspan="2">Today OD / Past Due Target</th> <th rowspan="2">Today Group Meeting Nos</th> </tr> <tr> <th>No of Ac</th><th>Amount</th> <th>No of Ac</th><th>Amount</th> <th>No of Ac</th><th>Amount</th> <th>No of Ac</th><th>Amount</th> </tr> </thead>
+                <tbody> <!-- Rows generated by JS --> </tbody>
+            </table>
+
+            <!-- Wrapper for Evening Content -->
+            <div id="eveningContentWrapper">
+                <div class="evening-table-container">
+                    <h3 class="section-title" id="eveningPlanTitle">Actual Done till Evening Plan</h3>
+                    <table class="report-table" id="eveningActualTable">
+                         <thead> <tr> <th rowspan="2">Name of Staff</th> <th colspan="2">Today Recovery Target</th> <th colspan="2">Today Disbursement Target</th> <th colspan="2">Today Appraisal Target</th> <th colspan="2">Today OD / Past Due Target</th> <th rowspan="2">Today Group Meeting Nos</th> </tr> <tr> <th>No of Ac</th><th>Amount</th> <th>No of Ac</th><th>Amount</th> <th>No of Ac</th><th>Amount</th> <th>No of Ac</th><th>Amount</th> </tr> </thead>
+                        <tbody> <!-- Rows generated by JS --> </tbody>
+                    </table>
+                </div>
+
+                <div class="analysis-section" id="analysisSectionContainer">
+                    <h3 class="section-title" id="analysisTitle">Analysis of Morning vs Evening (Auto-Generated)</h3>
+                    <div id="analysisOutput"> <p style="color: #888;">Select a Manager and generate Evening report for analysis.</p> </div>
+                </div>
+            </div> <!-- End #eveningContentWrapper -->
+
+        </div> <!-- End of #reportContentArea -->
+
+        <!-- Buttons -->
+        <div class="button-group">
+            <button type="button" id="generateBtn" onclick="previewReport()">Generate Report</button>
+            <button type="button" class="whatsapp-button" id="copyButton" onclick="copyReport()" style="display: none;">Copy Summary for WhatsApp</button>
+            <button type="button" class="pdf-button" id="pdfButton" onclick="generatePdfWithAutoTable()">Download PDF</button>
+        </div>
+
+         <!-- Hidden Output Area -->
+         <div id="reportOutputContainer" style="display: none;"> <h4>Generated Report Summary (for Copy/Paste):</h4> <div id="reportOutput"></div> </div>
+
+        <div class="footer"> Software by Umesh Tonpe </div>
+    </div> <!-- End .container -->
+
+    <script>
+        // --- Staff Data & Metrics Definition (No change) ---
+        const managerStaff = { "Balaji Shendge": [ "Mrs. Meera Pawar", "Mrs. Vandana Chilwant", "Mrs. Neeta Bhore", "Mrs. Swati Kawade", "Mrs. Gitangali Panchal", "Mrs. Savita Bangar", "Mrs.Shamal Potdar", "Mrs. Ashwini Shinde", "Mrs. Janabai Shikketod", "Mrs. Joti Shinde", "Mrs. Janhavi Shinde", "Miss. Vaishali Jadhav", "Mr. Vaibhav Chonde FX", "Mr. Vaibhav Shinde FX", "Mr. Prakash Todkar FX", "Mr. Darshan Nathjogi FX" ], "Atual Chilwant": [ "Mrs. Chaya Jogdand", "Mrs. Pramila Panchal", "Mrs.Savita Ausare", "Mrs.Usha Jagtap", "Mrs. Rajni Karale", "Mrs. Afreen Shaikh", "Mrs.Rajashri chavhan", "Mrs.Rohini Gapat", "Mrs. Kalpana Gunjal", "Mrs. Priyanka Deshmukh", "Mrs. Rekha Sapkal", "MR. Suraj Bhalerao FX", "Mr.Manoj Kshirsagar FX", "Mr. Rahim Shaikh FX", "Mr.Sushil Kumbhar FX" ], "Bhikaji Jadhav": [ "Mrs. Rohini Kothavale", "Mrs. Suvrnmala dorle", "Mrs. Nikita Chandanshive", "Mrs. Shakuntala Godge", "Mrs. Jayshree Kakde", "Mrs.Usha Mastud FX", "Mrs. Nanda Panchal FX", "Mrs. Pramila Rakh FX" ], "": [] };
+        const metrics = [ { key: 'rec', name: 'Recovery', fields: [{key: 'ac', name: 'Ac'}, {key: 'amt', name: 'Amt'}] }, { key: 'disb', name: 'Disbursement', fields: [{key: 'ac', name: 'Ac'}, {key: 'amt', name: 'Amt'}] }, { key: 'appr', name: 'Appraisal', fields: [{key: 'ac', name: 'Ac'}, {key: 'amt', name: 'Amt'}] }, { key: 'od', name: 'OD/Past Due', fields: [{key: 'ac', name: 'Ac'}, {key: 'amt', name: 'Amt'}] }, { key: 'meet', name: 'Group Meeting', fields: [{key: 'nos', name: 'Nos'}] } ];
+
+        // --- Populate Table Body ---
+        function populateTables() {
+            const selectedManager = document.getElementById('managerName').value;
+            const currentStaffList = managerStaff[selectedManager] || [];
+            const morningTbody = document.querySelector('#morningPlanTable tbody');
+            const eveningTbody = document.querySelector('#eveningActualTable tbody');
+            morningTbody.innerHTML = ''; eveningTbody.innerHTML = '';
+
+            currentStaffList.forEach(empName => {
+                const mRow = morningTbody.insertRow();
+                const eRow = eveningTbody.insertRow();
+                mRow.insertCell().textContent = empName; eRow.insertCell().textContent = empName;
+                const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, '');
+                metrics.forEach(metric => {
+                    metric.fields.forEach(field => {
+                        const mCell = mRow.insertCell(); const eCell = eRow.insertCell();
+                        const fieldKeyLower = field.key.toLowerCase();
+                        mCell.innerHTML = `<input type="number" id="m_${inputIdPrefix}_${metric.key}_${fieldKeyLower}" placeholder="${field.name}" required>`;
+                        eCell.innerHTML = `<input type="number" id="e_${inputIdPrefix}_${metric.key}_${fieldKeyLower}" placeholder="${field.name}" required>`;
+                    });
+                });
+            });
+            // Attempt to load data *after* tables are populated
+            if (document.getElementById('reportType').value === 'evening') {
+                loadMorningPlanData();
+            }
+             setMorningFieldsReadonly(document.getElementById('reportType').value === 'evening'); // Set initial readonly state
+        }
+
+        // --- Initialize ---
+        document.addEventListener('DOMContentLoaded', () => { document.getElementById('reportDate').valueAsDate = new Date(); handleManagerChange(); });
+        // --- Handle Manager Change ---
+        function handleManagerChange() { populateTables(); clearGeneratedOutput(); updateReportView(); } // updateReportView calls loadMorningPlanData if needed
+        // --- Handle Date Change ---
+        function handleDateChange() {
+             if (document.getElementById('reportType').value === 'evening') {
+                 loadMorningPlanData(); // Reload data for the new date if in evening mode
+             }
+             clearGeneratedOutput(); // Clear old summary
+        }
+
+        // --- Control View and Load Data ---
+        function updateReportView() {
+             const reportType = document.getElementById('reportType').value;
+             const eveningWrapper = document.getElementById('eveningContentWrapper');
+             const analysisOutputDiv = document.getElementById('analysisOutput');
+             const generateBtn = document.getElementById('generateBtn');
+             const isEvening = reportType === 'evening';
+
+             eveningWrapper.style.display = isEvening ? 'block' : 'none';
+             generateBtn.textContent = isEvening ? 'Generate Evening Report & Analysis' : 'Generate & Save Morning Plan'; // Update button text
+
+             setMorningFieldsReadonly(isEvening); // Make morning fields readonly/editable
+
+             if (isEvening) {
+                 analysisOutputDiv.innerHTML = '<p style="color: #888;">Analysis will appear here after generating the Evening report.</p>';
+                 loadMorningPlanData(); // Attempt to load data when switching TO evening
+             } else {
+                 // Optional: Clear morning fields when switching back to morning? Or leave them? Let's leave them for now.
+             }
+             clearGeneratedOutput();
+        }
+
+        // --- **NEW:** Set Morning Fields Readonly State ---
+        function setMorningFieldsReadonly(isReadonly) {
+            const morningTable = document.getElementById('morningPlanTable');
+            morningTable.querySelectorAll('input[type="number"]').forEach(input => {
+                input.readOnly = isReadonly;
+            });
+            // Add/remove class for styling
+            if (isReadonly) {
+                morningTable.classList.add('morning-plan-readonly');
+            } else {
+                morningTable.classList.remove('morning-plan-readonly');
+            }
+        }
+
+        // --- Clear generated summary ---
+        function clearGeneratedOutput() { document.getElementById('reportOutput').innerText = ''; document.getElementById('reportOutputContainer').style.display = 'none'; document.getElementById('copyButton').style.display = 'none'; }
+        // --- Helper to get numeric value ---
+        function getNumValue(id) { const element = document.getElementById(id); const value = Number(element ? element.value : 0); return isNaN(value) ? 0 : value; }
+        // --- Calculate Achievement ---
+        function calculateAchievement(plan, actual) { plan = Number(plan); actual = Number(actual); if (isNaN(plan) || isNaN(actual)) return "N/A"; if (plan === 0) return actual > 0 ? "100%+" : "0%"; return `${Math.round((actual / plan) * 100)}%`; }
+        // --- Generate Analysis Points ---
+        function generateAnalysisPoints() { /* ... Same logic ... */ const selectedManager = document.getElementById('managerName').value; const currentStaffList = managerStaff[selectedManager] || []; const analysisPoints = []; currentStaffList.forEach(empName => { const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, ''); let hasShortfall = false; metrics.forEach(metric => { metric.fields.forEach(field => { const fieldKeyLower = field.key.toLowerCase(); const fullMetricKey = `${metric.key}_${fieldKeyLower}`; const mId = `m_${inputIdPrefix}_${fullMetricKey}`; const eId = `e_${inputIdPrefix}_${fullMetricKey}`; const mVal = getNumValue(mId); const eVal = getNumValue(eId); const difference = eVal - mVal; if (difference < 0) { if (!hasShortfall) { hasShortfall = true; } const pointText = `${empName}: ${metric.name} ${field.name} ${difference} (Plan: ${mVal}, Actual: ${eVal})`; analysisPoints.push({ text: pointText, type: 'shortfall' }); } }); }); if (hasShortfall) { analysisPoints.push({ text: '', type: 'spacer' }); } }); return analysisPoints; }
+
+
+        // --- **NEW:** Save Morning Data to localStorage ---
+        function saveMorningPlanData() {
+             const selectedDate = document.getElementById('reportDate').value;
+             const selectedManager = document.getElementById('managerName').value;
+             if (!selectedDate || !selectedManager) {
+                 console.warn("Cannot save morning data without date or manager selected.");
+                 return; // Don't save if date/manager missing
+             }
+             const currentStaffList = managerStaff[selectedManager] || [];
+             const planData = {};
+             const storageKey = `morningPlan_${selectedManager}_${selectedDate}`; // Key includes manager now
+
+             currentStaffList.forEach(empName => {
+                 const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, '');
+                 metrics.forEach(metric => {
+                     metric.fields.forEach(field => {
+                         const fieldKeyLower = field.key.toLowerCase();
+                         const fullMetricKey = `${metric.key}_${fieldKeyLower}`;
+                         const mId = `m_${inputIdPrefix}_${fullMetricKey}`;
+                         planData[mId] = getNumValue(mId); // Store value using ID as key
+                     });
+                 });
+             });
+
+             try {
+                 localStorage.setItem(storageKey, JSON.stringify(planData));
+                 // console.log(`Morning plan saved for ${selectedManager} on ${selectedDate}`); // Optional console log
+                 alert(`Morning plan saved for ${selectedDate}`); // User feedback
+             } catch (e) {
+                 console.error("Error saving to localStorage:", e);
+                 alert("Error saving morning plan. Local storage might be full or disabled.");
+             }
+        }
+
+         // --- **NEW:** Load Morning Data from localStorage ---
+        function loadMorningPlanData() {
+             const selectedDate = document.getElementById('reportDate').value;
+             const selectedManager = document.getElementById('managerName').value;
+              if (!selectedDate || !selectedManager) {
+                 // console.log("Cannot load morning data without date or manager.");
+                 return; // Don't load if date/manager missing
+             }
+             const storageKey = `morningPlan_${selectedManager}_${selectedDate}`;
+             const savedData = localStorage.getItem(storageKey);
+             const morningTable = document.getElementById('morningPlanTable');
+
+             if (savedData) {
+                 try {
+                     const planData = JSON.parse(savedData);
+                     // console.log(`Loading morning plan for ${selectedManager} on ${selectedDate}`);
+                     let dataFound = false;
+                     // Loop through expected inputs based on current staff list
+                     const currentStaffList = managerStaff[selectedManager] || [];
+                     currentStaffList.forEach(empName => {
+                        const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, '');
+                         metrics.forEach(metric => {
+                             metric.fields.forEach(field => {
+                                 const fieldKeyLower = field.key.toLowerCase();
+                                 const fullMetricKey = `${metric.key}_${fieldKeyLower}`;
+                                 const mId = `m_${inputIdPrefix}_${fullMetricKey}`;
+                                 const inputElement = document.getElementById(mId);
+                                 if (inputElement && planData.hasOwnProperty(mId)) {
+                                     inputElement.value = planData[mId] || ''; // Set value from storage
+                                     dataFound = true;
+                                 } else if (inputElement) {
+                                      inputElement.value = ''; // Clear if not found in storage
+                                 }
+                             });
+                         });
+                     });
+                     if (!dataFound && Object.keys(planData).length > 0) {
+                        console.warn("Loaded data exists, but no matching input fields found (staff list might have changed).");
+                        // Optionally clear all morning fields if no matches found
+                         morningTable.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+                     } else if (!dataFound) {
+                         // console.log("No relevant data found in storage for current staff.");
+                     }
+
+                 } catch (e) {
+                     console.error("Error parsing saved morning data:", e);
+                      // Clear fields if data is corrupted
+                     morningTable.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+                 }
+             } else {
+                 // console.log(`No saved morning plan found for ${selectedManager} on ${selectedDate}`);
+                 // Clear all morning fields if no data is found for this date/manager
+                  morningTable.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+             }
+        }
+
+
+        // --- Generate Summary Text (Preview) - Modified to Save ---
+        function previewReport() {
+             let isValid = true; /* ... Validation ... */
+             if (!isValid) return;
+             const manager = document.getElementById('managerName').value;
+             if (!manager) { alert("Please select a Manager first."); return; }
+             const currentStaffList = managerStaff[manager] || [];
+             const date = document.getElementById('reportDate').value;
+             const reportType = document.getElementById('reportType').value;
+             let reportSummaryString = "";
+             const analysisOutputDiv = document.getElementById('analysisOutput');
+
+             // --- Morning Report ---
+             if (reportType === 'morning') {
+                  // ... (Generate morning summary string as before) ...
+                  reportSummaryString += "*Morning Plan Summary*\n\n"; const totals = { m: {}, e: {} }; metrics.forEach(metric => metric.fields.forEach(field => { const key = `${metric.key}_${field.key.toLowerCase()}`; totals.m[key] = 0; totals.e[key] = 0; })); currentStaffList.forEach(empName => { const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, ''); reportSummaryString += `*${empName}*\n`; metrics.forEach(metric => { metric.fields.forEach(field => { const fieldKeyLower = field.key.toLowerCase(); const fullMetricKey = `${metric.key}_${fieldKeyLower}`; const mId = `m_${inputIdPrefix}_${fullMetricKey}`; const mVal = getNumValue(mId); totals.m[fullMetricKey] += mVal; reportSummaryString += `  - ${metric.name} ${field.name}: ${mVal}\n`; }); }); reportSummaryString += "\n"; }); reportSummaryString += `------------------------------------\n*TOTALS (Morning Plan)*\n`; metrics.forEach(metric => metric.fields.forEach(field => { const key = `${metric.key}_${field.key.toLowerCase()}`; reportSummaryString += `  - Total ${metric.name} ${field.name}: ${totals.m[key]}\n`; })); reportSummaryString += `------------------------------------\n\n`; analysisOutputDiv.innerHTML = '<p style="color: #888;">Analysis is generated with the Evening Report.</p>';
+                  saveMorningPlanData(); // <-- SAVE DATA HERE
+             }
+             // --- Evening Report ---
+             else {
+                  // ... (Generate evening summary string + analysis as before) ...
+                   reportSummaryString += "*Performance Summary (Plan vs Actual | Achievement)*\n\n"; const totals = { m: {}, e: {} }; metrics.forEach(metric => metric.fields.forEach(field => { const key = `${metric.key}_${field.key.toLowerCase()}`; totals.m[key] = 0; totals.e[key] = 0; })); currentStaffList.forEach(empName => { const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, ''); reportSummaryString += `*${empName}*\n`; metrics.forEach(metric => { metric.fields.forEach(field => { const fieldKeyLower = field.key.toLowerCase(); const fullMetricKey = `${metric.key}_${fieldKeyLower}`; const mId = `m_${inputIdPrefix}_${fullMetricKey}`; const eId = `e_${inputIdPrefix}_${fullMetricKey}`; const mVal = getNumValue(mId); const eVal = getNumValue(eId); totals.m[fullMetricKey] += mVal; totals.e[fullMetricKey] += eVal; reportSummaryString += `  - ${metric.name} ${field.name}: ${mVal} vs ${eVal} | ${calculateAchievement(mVal, eVal)}\n`; }); }); reportSummaryString += "\n"; }); reportSummaryString += `------------------------------------\n*TOTALS (Plan vs Actual | Achievement)*\n`; metrics.forEach(metric => metric.fields.forEach(field => { const key = `${metric.key}_${field.key.toLowerCase()}`; reportSummaryString += `  - Total ${metric.name} ${field.name}: ${totals.m[key]} vs ${totals.e[key]} | ${calculateAchievement(totals.m[key], totals.e[key])}\n`; })); reportSummaryString += `------------------------------------\n\n`; const analysisPoints = generateAnalysisPoints(); analysisOutputDiv.innerHTML = ''; if (analysisPoints.length > 0) { analysisPoints.forEach(point => { if (point.type !== 'spacer') { const p = document.createElement('div'); p.classList.add('analysis-point'); p.textContent = point.text; if (point.type === 'shortfall') p.classList.add('shortfall'); analysisOutputDiv.appendChild(p); } }); } else { analysisOutputDiv.innerHTML = '<p style="color: #198754;">No shortfalls found compared to plan!</p>'; } reportSummaryString += "*Auto-Generated Analysis (Shortfalls):*\n"; if (analysisPoints.length > 0) { analysisPoints.forEach(point => { if (point.type === 'shortfall') reportSummaryString += `- ${point.text}\n`; }); } else { reportSummaryString += "- No shortfalls found compared to plan.\n"; } reportSummaryString += "\n";
+             }
+             reportSummaryString += `Generated by Software by Umesh Tonpe`;
+
+             // Display Summary
+             document.getElementById('reportOutput').innerText = reportSummaryString;
+             document.getElementById('reportOutputContainer').style.display = 'block';
+             document.getElementById('copyButton').style.display = 'inline-block';
+         }
+
+         // --- Copy for WhatsApp (UNCHANGED) ---
+         function copyReport() { /* ... */ }
+
+        // --- Generate PDF using jsPDF-AutoTable (UNCHANGED) ---
+        async function generatePdfWithAutoTable() { /* ... Same logic as v5.0 ... */ const { jsPDF } = window.jspdf; if (typeof jsPDF.API.autoTable !== 'function') { console.error("jsPDF AutoTable plugin is not loaded correctly."); alert("Error: PDF generation library component (AutoTable) missing."); return; } const manager = document.getElementById('managerName').value; const reportDate = document.getElementById('reportDate').value; const reportType = document.getElementById('reportType').value; const pdfButton = document.getElementById('pdfButton'); if (!manager) { alert("Please select a Manager."); return; } if (!reportDate) { alert("Please select a Date."); return; } const currentStaffList = managerStaff[manager] || []; pdfButton.innerText = 'Generating PDF...'; pdfButton.disabled = true; try { const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }); let currentY = 15; const pageMargin = 10; const pageHeight = doc.internal.pageSize.getHeight(); const pageWidth = doc.internal.pageSize.getWidth(); const contentWidth = pageWidth - 2 * pageMargin; const imgElement = document.getElementById('headerImage'); if (imgElement && imgElement.complete && imgElement.naturalHeight !== 0) { const imgData = imgElement.src; const imgProps = await new Promise((resolve) => { const img = new Image(); img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight }); img.onerror = () => resolve(null); img.src = imgData; }); if(imgProps) { const imgWidth = contentWidth * 0.8; const imgHeight = (imgProps.height * imgWidth) / imgProps.width; const imgX = (pageWidth - imgWidth) / 2; doc.addImage(imgData, 'JPEG', imgX, pageMargin, imgWidth, imgHeight); currentY = pageMargin + imgHeight + 5; } else { doc.setFontSize(10); doc.text("Anik Financial Services Pvt. Ltd.", pageMargin, currentY); currentY += 10; } } else { doc.setFontSize(10); doc.text("Anik Financial Services Pvt. Ltd.", pageMargin, currentY); currentY += 10; } doc.setFontSize(12); doc.setFont(undefined, 'bold'); doc.text("MANAGER DAILY REPORT", pageWidth / 2, currentY, { align: 'center' }); currentY += 7; doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.text(`Manager: ${manager}`, pageMargin, currentY); doc.text(`Date: ${reportDate}`, pageWidth - pageMargin, currentY, { align: 'right' }); currentY += 5; doc.text(`Report Type: ${reportType === 'morning' ? 'Morning Plan' : 'Evening Actuals & Analysis'}`, pageMargin, currentY); currentY += 8; const head = [ [ { content: 'Name of Staff', rowSpan: 2, styles: { halign: 'left', valign: 'middle' } }, { content: 'Today Recovery Target', colSpan: 2, styles: { halign: 'center' } }, { content: 'Today Disbursement Target', colSpan: 2, styles: { halign: 'center' } }, { content: 'Today Appraisal Target', colSpan: 2, styles: { halign: 'center' } }, { content: 'Today OD / Past Due Target', colSpan: 2, styles: { halign: 'center' } }, { content: 'Today Group Meeting Nos', rowSpan: 2, styles: { valign: 'middle' } } ], [ { content: 'No of Ac' }, { content: 'Amount' }, { content: 'No of Ac' }, { content: 'Amount' }, { content: 'No of Ac' }, { content: 'Amount' }, { content: 'No of Ac' }, { content: 'Amount' } ] ]; const morningBody = []; const eveningBody = []; currentStaffList.forEach(empName => { const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, ''); const morningRow = [empName]; const eveningRow = [empName]; metrics.forEach(metric => { metric.fields.forEach(field => { const fieldKeyLower = field.key.toLowerCase(); const fullMetricKey = `${metric.key}_${fieldKeyLower}`; morningRow.push(getNumValue(`m_${inputIdPrefix}_${fullMetricKey}`)); if (reportType === 'evening') { eveningRow.push(getNumValue(`e_${inputIdPrefix}_${fullMetricKey}`)); } }); }); morningBody.push(morningRow); if (reportType === 'evening') { eveningBody.push(eveningRow); } }); doc.setFontSize(9); doc.text("Morning Plan", pageMargin, currentY); currentY += 4; doc.autoTable({ head: head, body: morningBody, startY: currentY, theme: 'grid', margin: { left: pageMargin, right: pageMargin }, styles: { fontSize: 6.5, cellPadding: 0.8, overflow: 'linebreak' }, headStyles: { fillColor: [232, 240, 254], textColor: [0, 51, 102], fontStyle: 'bold', halign: 'center', valign: 'middle', fontSize: 7 }, bodyStyles: { valign: 'middle' }, columnStyles: { 0: { cellWidth: 'auto', halign: 'left' }, 1: { halign: 'right', cellWidth: 18 }, 3: { halign: 'right', cellWidth: 18 }, 5: { halign: 'right', cellWidth: 18 }, 7: { halign: 'right', cellWidth: 18 }, 2: { halign: 'right', cellWidth: 26 }, 4: { halign: 'right', cellWidth: 26 }, 6: { halign: 'right', cellWidth: 26 }, 8: { halign: 'right', cellWidth: 26 }, 9: { halign: 'right', cellWidth: 18 }, }, didDrawPage: function (data) { } }); currentY = doc.autoTable.previous.finalY + 8; if (reportType === 'evening') { if (currentY > pageHeight - 40) { doc.addPage(); currentY = pageMargin; } doc.setFontSize(9); doc.text("Actual Done till Evening Plan", pageMargin, currentY); currentY += 4; doc.autoTable({ head: head, body: eveningBody, startY: currentY, theme: 'grid', margin: { left: pageMargin, right: pageMargin }, styles: { fontSize: 6.5, cellPadding: 0.8, overflow: 'linebreak' }, headStyles: { fillColor: [232, 240, 254], textColor: [0, 51, 102], fontStyle: 'bold', halign: 'center', valign: 'middle', fontSize: 7 }, bodyStyles: { valign: 'middle' }, columnStyles: { 0: { cellWidth: 'auto', halign: 'left' }, 1: { halign: 'right', cellWidth: 18 }, 3: { halign: 'right', cellWidth: 18 }, 5: { halign: 'right', cellWidth: 18 }, 7: { halign: 'right', cellWidth: 18 }, 2: { halign: 'right', cellWidth: 26 }, 4: { halign: 'right', cellWidth: 26 }, 6: { halign: 'right', cellWidth: 26 }, 8: { halign: 'right', cellWidth: 26 }, 9: { halign: 'right', cellWidth: 18 }, }, }); currentY = doc.autoTable.previous.finalY + 8; } if (reportType === 'evening') { const analysisPoints = generateAnalysisPoints(); let analysisText = ""; if (analysisPoints.length > 0) { analysisPoints.forEach(point => { if (point.type === 'shortfall') analysisText += `- ${point.text}\n`; }); } else { analysisText = "- No shortfalls found compared to plan."; } const analysisTitle = "Analysis of Morning vs Evening (Auto-Generated)"; const splitText = doc.splitTextToSize(analysisText, contentWidth); const textHeight = splitText.length * (doc.getTextDimensions('M').h * 1.2); if (currentY + textHeight + 10 > pageHeight - pageMargin) { doc.addPage(); currentY = pageMargin; } doc.setFontSize(9); doc.setFont(undefined, 'bold'); doc.text(analysisTitle, pageMargin, currentY); currentY += 5; doc.setFontSize(8); doc.setFont(undefined, 'normal'); doc.text(splitText, pageMargin, currentY); currentY += textHeight + 5; } const pageCount = doc.internal.getNumberOfPages(); for (let i = 1; i <= pageCount; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(100); doc.text(`Software by Umesh Tonpe`, pageWidth / 2, pageHeight - (pageMargin / 2) - 2, { align: 'center' }); } const filename = `Manager_Report_${reportType === 'morning' ? 'Morning' : 'Evening'}_${manager}_${reportDate}.pdf`; doc.save(filename); } catch (error) { console.error("Error generating PDF:", error); alert("Failed to generate PDF. See browser console for details."); } finally { pdfButton.innerText = 'Download PDF'; pdfButton.disabled = false; } }
+
+    </script>
+
+</body>
+</html>
