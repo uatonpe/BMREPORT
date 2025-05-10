@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anik Fin - व्यवस्थापक दैनिक अहवाल (v6.5 - Styled PDF)</title>
+    <!-- jsPDF Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- jsPDF AutoTable Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+     <!-- html2canvas (Optional - Only needed if direct image add fails) -->
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* Base Styles */
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 15px; color: #333; font-size: 14px; }
+        .container { max-width: 1200px; margin: 15px auto; background-color: #ffffff; padding: 20px 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); border: 1px solid #ddd; }
+        #reportContentArea { background-color: #fff; }
+
+        /* Header Image Styles */
+        .header { margin-bottom: 20px; line-height: 0; text-align: center; }
+        .header img { max-width: 100%; height: auto; display: inline-block; border: 1px solid #eee; }
+
+        h2.report-title { text-align: center; color: #333; font-weight: bold; margin-bottom: 15px; font-size: 1.4em; }
+
+        /* Info Section Styles */
+        .info-section { margin-bottom: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;}
+        .info-section label { font-weight: bold; min-width: 150px; text-align: right; padding-right: 10px; flex-shrink: 0;}
+        .info-section input[type="text"], .info-section input[type="date"], .info-section select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1; min-width: 200px; font-size: 1em;}
+
+        /* Table Styles */
+        .report-table { width: 100%; border-collapse: collapse; margin-bottom: 0; font-size: 0.9em; table-layout: fixed; }
+        .report-table th, .report-table td { border: 1px solid #a9c6e2; padding: 5px; text-align: center; vertical-align: middle; overflow-wrap: break-word; word-wrap: break-word; }
+        .report-table thead { border-bottom: 2px solid #0056b3; }
+        .report-table thead th { background-color: #e8f0fe; font-weight: bold; color: #003366; white-space: normal; padding: 6px 4px; position: relative; }
+        .report-table thead tr:first-child th { border-bottom-width: 1.5px; border-bottom-color: #8baed1; }
+        .report-table thead tr:last-child th { font-size: 0.85em; font-weight: bold; color: #335b85; background-color: #f5f9ff; padding: 3px 4px; border: none; border-right: 1px solid #a9c6e2 !important; border-top: 1px solid #a9c6e2 !important; }
+        .report-table thead tr:last-child th:last-child { border-right: none !important; }
+        .report-table thead th[rowspan="2"] { vertical-align: middle; border-bottom-width: 1px; border-bottom-color: #a9c6e2; }
+        /* Column Widths */
+        .report-table tbody td:first-child, .report-table thead th[rowspan="2"]:first-child { text-align: left; font-weight: bold; background-color: #f8f9fa; width: 7%; vertical-align: middle; }
+        .report-table thead th[rowspan="2"]:last-child, .report-table tbody td:last-child { width: 7%; vertical-align: middle; }
+        .report-table th:nth-child(2), .report-table td:nth-child(2), .report-table th:nth-child(4), .report-table td:nth-child(4), .report-table th:nth-child(6), .report-table td:nth-child(6), .report-table th:nth-child(8), .report-table td:nth-child(8) { width: 8%; }
+        .report-table th:nth-child(3), .report-table td:nth-child(3), .report-table th:nth-child(5), .report-table td:nth-child(5), .report-table th:nth-child(7), .report-table td:nth-child(7), .report-table th:nth-child(9), .report-table td:nth-child(9) { width: 13%; }
+        /* Text Input Styles for numbers */
+        .report-table input[type="text"] { width: 98%; padding: 5px 4px; border: 1px solid #ccc; border-radius: 3px; text-align: right; font-size: 1em; box-sizing: border-box; }
+        .plan-table-readonly input[type="text"], .plan-table-readonly textarea { background-color: #e9ecef; color: #495057; cursor: not-allowed; border-color: #ced4da; }
+
+        h3.section-title { margin-top: 25px; margin-bottom: 8px; font-size: 1.15em; color: #0056b3; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+
+        /* Custom Report & Analysis Section */
+        .custom-report-section, .analysis-section { margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #f9f9f9; }
+        .custom-report-section .input-group { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;}
+        .custom-report-section label { font-weight: bold; min-width: 220px; text-align: right; padding-right: 10px; flex-shrink: 0;}
+        .custom-report-section input[type="number"], .custom-report-section textarea { padding: 6px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1; min-width: 100px; }
+        .custom-report-section input[type="number"] { text-align: right; }
+        #analysisOutput { font-family: monospace; font-size: 0.95em; line-height: 1.6; color: #444; white-space: pre-wrap; max-height: 250px; overflow-y: auto; }
+        #analysisOutput .analysis-point { margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px dotted #ccc; }
+        #analysisOutput .analysis-point:last-child { border-bottom: none; margin-bottom: 0; }
+        #analysisOutput .shortfall { color: #dc3545; }
+        #analysisOutput .exceeded { color: #28a745; }
+        .table-scroll-wrapper { overflow-x: auto; margin-bottom: 15px; width: 100%; }
+
+        /* Button Group, Output Area, Footer */
+        .button-group { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
+        .button-group button { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; transition: background-color 0.3s ease; margin: 5px 10px; }
+        .button-group button:hover { background-color: #0056b3; }
+        .button-group button.pdf-button { background-color: #dc3545; }
+        .button-group button.pdf-button:hover { background-color: #c82333; }
+        .button-group button.whatsapp-button { background-color: #28a745; }
+        .button-group button.whatsapp-button:hover { background-color: #218838; }
+        #reportOutputContainer { margin-top: 30px; display: none; border: 1px dashed #ccc; padding: 15px; background: #f9f9f9;}
+        #reportOutput { white-space: pre-wrap; font-family: monospace; font-size: 0.95em; }
+        .footer { text-align: center; margin-top: 40px; font-size: 0.9em; color: #777; }
+
+        /* Mobile Styles */
+        @media (max-width: 768px) { .table-scroll-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; } .report-table input[type="text"] { font-size: 16px !important; min-height: 30px !important; padding: 5px 4px !important; width: 98%; } .report-table th, .report-table td { padding: 3px 4px !important; font-size: 7.5pt; } .report-table tbody td:first-child { font-size: 7.5pt; width: 12%; } .report-table th:nth-child(2), .report-table td:nth-child(2), .report-table th:nth-child(4), .report-table td:nth-child(4), .report-table th:nth-child(6), .report-table td:nth-child(6), .report-table th:nth-child(8), .report-table td:nth-child(8) { width: 10%; } .report-table th:nth-child(3), .report-table td:nth-child(3), .report-table th:nth-child(5), .report-table td:nth-child(5), .report-table th:nth-child(7), .report-table td:nth-child(7), .report-table th:nth-child(9), .report-table td:nth-child(9) { width: 15%; } .report-table thead th[rowspan="2"]:last-child, .report-table tbody td:last-child { width: 10%; } .report-table thead th { font-size: 0.8em; padding-top: 4px; padding-bottom: 4px; } .report-table thead tr:last-child th { font-size: 0.75em; padding: 2px 3px; } .info-section { gap: 5px; flex-direction: column; align-items: stretch; } .info-section label { min-width: unset; text-align: left; font-size: 0.9em; margin-bottom: 2px; } .info-section input, .info-section select { width: 100%; box-sizing: border-box; } }
+        /* Print styles */
+        @media print { /* Print styles */ }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="reportContentArea">
+            <!-- IMAGE HEADER -->
+            <div class="header" id="pdfHeaderImageContainer">
+                 <img src="anik_header.jpg" id="headerImage" alt="Anik Financial Services Pvt. Ltd. Banner">
+            </div>
+
+            <h2 class="report-title">MANAGER DAILY REPORT</h2>
+
+            <!-- Basic Info -->
+            <div class="info-section"> <label for="managerName">MANAGER:</label> <select id="managerName" name="managerName" required onchange="handleManagerChange()"> <option value="">-- Select --</option> <option value="Balaji Shendge">Balaji Shendge</option> <option value="Atual Chilwant">Atual Chilwant</option> <option value="Bhikaji Jadhav">Bhikaji Jadhav</option> </select> </div>
+            <div class="info-section"> <label for="reportDate">REPORT DATE (Achievement For):</label> <input type="date" id="reportDate" name="reportDate" required onchange="handleDateChange()"> </div>
+
+            <!-- Plan Table (Plan *for* the Report Date, loaded) -->
+            <h3 class="section-title" id="planTableTitle">Plan (for Report Date)</h3>
+            <div class="table-scroll-wrapper">
+                <table class="report-table" id="planTable">
+                    <thead><!-- Header populated by JS --></thead>
+                    <tbody><!-- Rows generated by JS --></tbody>
+                </table>
+            </div>
+
+            <!-- Achievement Table (Data entered for the Report Date) -->
+            <h3 class="section-title" id="achievementTableTitle">Achievement (for Report Date)</h3>
+            <div class="table-scroll-wrapper">
+                <table class="report-table" id="achievementTable">
+                    <thead><!-- Header populated by JS --></thead>
+                    <tbody><!-- Rows generated by JS --></tbody>
+                </table>
+            </div>
+
+            <!-- Next Day's Plan Entry Section -->
+            <div class="custom-report-section" id="nextDayPlanSection">
+                <h3 class="section-title">Next Day's Plan & Other Notes (Plan for <span id="nextDayDateDisplay"></span>)</h3>
+                <div class="table-scroll-wrapper">
+                    <table class="report-table" id="nextDayPlanTable">
+                         <thead><!-- Header populated by JS --></thead>
+                         <tbody><!-- Rows generated by JS --></tbody>
+                    </table>
+                </div>
+                <div class="input-group"> <label for="invPlanInvestors">Investment Plan - Investors #:</label> <input type="number" id="invPlanInvestors" placeholder="No."> </div>
+                <div class="input-group"> <label for="invPlanAmount">Investment Plan - Amount ₹:</label> <input type="number" id="invPlanAmount" placeholder="Amt"> </div>
+                <div class="input-group"> <label for="otherNotes">Additional Notes/Plans:</label> <textarea id="otherNotes" rows="3" style="width:100%; padding: 6px; border:1px solid #ccc; border-radius:4px;"></textarea> </div>
+            </div>
+
+            <!-- Analysis Section -->
+            <div class="analysis-section" id="analysisSectionContainer">
+                <h3 class="section-title" id="analysisTitle">Performance Analysis (Plan vs Achievement for Report Date)</h3>
+                <div id="analysisOutput"> <p style="color: #888;">Analysis appears after report generation.</p> </div>
+            </div>
+
+        </div> <!-- End of #reportContentArea -->
+
+        <!-- Buttons -->
+        <div class="button-group">
+            <button type="button" id="generateBtn" onclick="generateAndSaveReport()">Submit Achievement & Save Next Plan</button>
+            <button type="button" class="whatsapp-button" id="copyButton" onclick="copyReport()" style="display: none;">Copy Summary</button>
+            <button type="button" class="pdf-button" id="pdfButton" onclick="generatePdfWithAutoTable()">Download PDF</button>
+        </div>
+
+         <!-- Hidden Output Area -->
+         <div id="reportOutputContainer" style="display: none;"> <h4>Generated Report Summary (for Copy/Paste):</h4> <div id="reportOutput"></div> </div>
+
+        <div class="footer"> Software by Umesh Tonpe </div>
+    </div> <!-- End .container -->
+
+    <script>
+        // --- Staff Data & Metrics Definition ---
+        const managerStaff = { "Balaji Shendge": [ "Mrs. Meera Pawar", "Mrs. Vandana Chilwant", "Mrs. Neeta Bhore", "Mrs. Swati Kawade", "Mrs. Gitangali Panchal", "Mrs. Savita Bangar", "Mrs.Shamal Potdar", "Mrs. Ashwini Shinde", "Mrs. Janabai Shikketod", "Mrs. Joti Shinde", "Mrs. Janhavi Shinde", "Miss. Vaishali Jadhav", "Mr. Vaibhav Chonde FX", "Mr. Vaibhav Shinde FX", "Mr. Prakash Todkar FX", "Mr. Darshan Nathjogi FX" ], "Atual Chilwant": [ "Mrs. Chaya Jogdand", "Mrs. Pramila Panchal", "Mrs.Savita Ausare", "Mrs.Usha Jagtap", "Mrs. Rajni Karale", "Mrs. Afreen Shaikh", "Mrs.Rajashri chavhan", "Mrs.Rohini Gapat", "Mrs. Kalpana Gunjal", "Mrs. Priyanka Deshmukh", "Mrs. Rekha Sapkal", "MR. Suraj Bhalerao FX", "Mr.Manoj Kshirsagar FX", "Mr. Rahim Shaikh FX", "Mr.Sushil Kumbhar FX" ], "Bhikaji Jadhav": [ "Mrs. Rohini Kothavale", "Mrs. Suvrnmala dorle", "Mrs. Nikita Chandanshive", "Mrs. Shakuntala Godge", "Mrs. Jayshree Kakde", "Mrs.Usha Mastud FX", "Mrs. Nanda Panchal FX", "Mrs. Pramila Rakh FX" ], "": [] };
+        const metrics = [ { key: 'rec', name: 'Recovery', fields: [{key: 'ac', name: 'Ac'}, {key: 'amt', name: 'Amt'}] }, { key: 'disb', name: 'Disbursement', fields: [{key: 'ac', name: 'Ac'}, {key: 'amt', name: 'Amt'}] }, { key: 'appr', name: 'Appraisal', fields: [{key: 'ac', name: 'Ac'}, {key: 'amt', name: 'Amt'}] }, { key: 'od', name: 'OD/Past Due', fields: [{key: 'ac', name: 'Ac'}, {key: 'amt', name: 'Amt'}] }, { key: 'meet', name: 'Group Meeting', fields: [{key: 'nos', name: 'Nos'}] } ];
+
+        // --- Populate Table Headers ---
+        function populateTableHeaders(tableId, mainTitleSuffix = 'Target', subTitleSuffix = 'Value') {
+            const table = document.getElementById(tableId);
+            if (!table) { console.error("Table not found:", tableId); return; }
+            let headerHTML = '<thead><tr><th rowspan="2" style="width: 7%;">Name of Staff</th>';
+            metrics.forEach(metric => {
+                if (metric.key === 'meet') { /* Skip */ }
+                else { headerHTML += `<th colspan="2">${metric.name} ${mainTitleSuffix}</th>`; }
+            });
+            const meetMetric = metrics.find(m => m.key === 'meet');
+            if (meetMetric) { headerHTML += `<th rowspan="2" style="width: 7%;">${meetMetric.name} ${mainTitleSuffix}</th>`; }
+            headerHTML += `</tr><tr>`;
+            metrics.forEach(metric => {
+                if (metric.key !== 'meet') {
+                    metric.fields.forEach(field => {
+                        headerHTML += `<th>${field.name === 'Nos' ? field.name : field.name + ' ' + subTitleSuffix}</th>`;
+                    });
+                }
+            });
+            headerHTML += `</tr></thead>`;
+            const existingThead = table.querySelector('thead');
+            if (existingThead) { existingThead.innerHTML = headerHTML; }
+            else { const thead = table.createTHead(); thead.innerHTML = headerHTML; }
+            if (!table.querySelector('tbody')) { table.createTBody(); }
+        }
+
+        // --- Populate Table Bodies ---
+        function populateTableBodies() {
+            console.log("Populating table bodies...");
+            const selectedManager = document.getElementById('managerName').value;
+            const currentStaffList = managerStaff[selectedManager] || [];
+
+            ['planTable', 'achievementTable', 'nextDayPlanTable'].forEach(tableId => {
+                const tbody = document.querySelector(`#${tableId} tbody`);
+                if (!tbody) { console.error("Tbody not found for table:", tableId); return; }
+                tbody.innerHTML = '';
+                currentStaffList.forEach(empName => {
+                    const row = tbody.insertRow();
+                    row.insertCell().textContent = empName;
+                    const idPrefixBase = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, '');
+                    let prefix = '';
+                    if (tableId === 'planTable') prefix = 'p_';
+                    else if (tableId === 'achievementTable') prefix = 'a_';
+                    else if (tableId === 'nextDayPlanTable') prefix = 'ndp_';
+
+                    metrics.forEach(metric => {
+                        metric.fields.forEach(field => {
+                            const cell = row.insertCell();
+                            const fieldKeyLower = field.key.toLowerCase();
+                            const inputId = `${prefix}${idPrefixBase}_${metric.key}_${fieldKeyLower}`;
+                            cell.innerHTML = `<input type="text" inputmode="numeric" pattern="[0-9]*" id="${inputId}" placeholder="${field.name}" required>`;
+                        });
+                    });
+                });
+            });
+            loadPlanDataForReportDate();
+            updateNextDayDateDisplay();
+            console.log("Table bodies populated.");
+        }
+
+        // --- Initialize & Event Handlers ---
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM Loaded - Initializing...");
+            document.getElementById('reportDate').valueAsDate = new Date();
+            try {
+                populateTableHeaders('planTable', 'Target', 'Target');
+                populateTableHeaders('achievementTable', 'Done', 'Done');
+                populateTableHeaders('nextDayPlanTable', 'Target', 'Target');
+                console.log("Headers populated");
+                handleManagerChange();
+            } catch(e) { console.error("Error during initialization:", e); alert("Initialization error. Check console."); }
+        });
+
+        function handleManagerChange() { console.log("Manager changed"); populateTableBodies(); clearGeneratedOutput(); }
+        function handleDateChange() { console.log("Date changed"); loadPlanDataForReportDate(); clearGeneratedOutput(); updateNextDayDateDisplay(); }
+        function updateNextDayDateDisplay() { const reportDateVal = document.getElementById('reportDate').value; if (reportDateVal) { try { const nextDay = new Date(reportDateVal); nextDay.setDate(nextDay.getDate() + 1); document.getElementById('nextDayDateDisplay').textContent = nextDay.toLocaleDateString('en-CA'); } catch(e){ document.getElementById('nextDayDateDisplay').textContent = "tomorrow"; } } else { document.getElementById('nextDayDateDisplay').textContent = "tomorrow"; } }
+
+        // --- ReadOnly State ---
+        function setPlanFieldsReadonly(tableId, isReadonly) {
+            const table = document.getElementById(tableId);
+            if(!table) { console.error("setPlanFieldsReadonly: Table not found -", tableId); return; }
+
+            table.querySelectorAll('input[type="text"]').forEach(input => { input.readOnly = isReadonly; });
+
+            const customReportContainer = document.getElementById('nextDayPlanSection');
+            const customInputs = customReportContainer.querySelectorAll('input[type=number], textarea');
+
+            // Readonly status of custom fields should generally match the nextDayPlanTable
+            if (tableId === 'nextDayPlanTable') {
+                customInputs.forEach(el => el.readOnly = isReadonly);
+                 if (isReadonly) { customReportContainer.classList.add('plan-table-readonly'); }
+                 else { customReportContainer.classList.remove('plan-table-readonly'); }
+            } else if (tableId === 'planTable') {
+                // If the main plan table is being set (usually to readonly after loading)
+                // Ensure the next day section remains editable
+                customInputs.forEach(el => el.readOnly = false);
+                customReportContainer.classList.remove('plan-table-readonly');
+            }
+
+            if (isReadonly) { table.classList.add('plan-table-readonly');}
+            else { table.classList.remove('plan-table-readonly');}
+        }
+
+
+        // --- Clear Output ---
+        function clearGeneratedOutput() { document.getElementById('reportOutput').innerText = ''; document.getElementById('reportOutputContainer').style.display = 'none'; document.getElementById('copyButton').style.display = 'none'; console.log("Output cleared."); }
+        // --- Get Numeric Value ---
+        function getNumValue(id) { const element = document.getElementById(id); if (!element) { return 0;} const value = Number(element.value); return isNaN(value) ? 0 : value; }
+        // --- Calculate Achievement ---
+        function calculateAchievement(plan, actual) { plan = Number(plan); actual = Number(actual); if (isNaN(plan) || isNaN(actual)) return "N/A"; if (plan === 0) return actual > 0 ? "100%+" : "0%"; return `${Math.round((actual / plan) * 100)}%`; }
+
+        // --- Load Plan Data FOR THE CURRENT 'Report Date' into 'planTable' ---
+        function loadPlanDataForReportDate() {
+            console.log("Loading plan data for report date...");
+            const selectedDate = document.getElementById('reportDate').value;
+            const selectedManager = document.getElementById('managerName').value;
+            const planTable = document.getElementById('planTable');
+            const planTableTitle = document.getElementById('planTableTitle');
+            const achievementTableTitle = document.getElementById('achievementTableTitle');
+
+            planTable.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+            setPlanFieldsReadonly('nextDayPlanTable', false); // Ensure next day is editable by default
+
+            if (!selectedDate || !selectedManager) {
+                setPlanFieldsReadonly('planTable', true);
+                planTableTitle.textContent = "Plan (Select Manager/Date)";
+                achievementTableTitle.textContent = "Achievement (for " + (selectedDate || "selected date") + ")";
+                console.log("No manager/date selected.");
+                return;
+            }
+            const storageKey = `planData_${selectedManager}_${selectedDate}`;
+            const savedData = localStorage.getItem(storageKey);
+            let planFound = false;
+
+            if (savedData) {
+                try {
+                    const planData = JSON.parse(savedData);
+                    const currentStaffList = managerStaff[selectedManager] || [];
+                    currentStaffList.forEach(empName => {
+                        const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, '');
+                        metrics.forEach(metric => {
+                            metric.fields.forEach(field => {
+                                const fieldKeyLower = field.key.toLowerCase();
+                                const pId = `p_${inputIdPrefix}_${metric.key}_${fieldKeyLower}`;
+                                const inputElement = document.getElementById(pId);
+                                if (inputElement && planData.hasOwnProperty(pId)) {
+                                    inputElement.value = planData[pId] ?? '';
+                                    planFound = true;
+                                }
+                            });
+                        });
+                    });
+                    // Do NOT load custom fields into the nextDayPlan section here.
+                } catch (e) { console.error("Error parsing saved plan data:", e); planFound = false;}
+            }
+
+            if (planFound) {
+                setPlanFieldsReadonly('planTable', true); // Data loaded, make it read-only
+                planTableTitle.textContent = "Plan (Loaded for " + selectedDate + ")";
+                console.log(`Plan found and loaded for ${selectedDate}, planTable readonly.`);
+            } else {
+                console.log(`No plan found for ${selectedDate}. Plan table will be empty/readonly.`);
+                setPlanFieldsReadonly('planTable', true); // No plan, keep it readonly
+                planTableTitle.textContent = "Plan (No plan found for " + selectedDate + ")";
+            }
+            achievementTableTitle.textContent = "Achievement (for " + selectedDate + ")";
+        }
+
+
+        // --- Save data from "Next Day Plan" section ---
+        function saveNextDayPlanData() {
+            console.log("Saving next day plan...");
+            const reportDateElement = document.getElementById('reportDate');
+            let achievementDate = new Date(reportDateElement.value);
+            if (isNaN(achievementDate)) { alert("Invalid Report Date."); return false; }
+            const planEffectiveDate = new Date(achievementDate);
+            planEffectiveDate.setDate(achievementDate.getDate() + 1);
+            const planEffectiveDateString = planEffectiveDate.toISOString().split('T')[0];
+            const selectedManager = document.getElementById('managerName').value;
+            if (!selectedManager) { return false; }
+            const currentStaffList = managerStaff[selectedManager] || [];
+            const planDataToSave = {};
+            const storageKey = `planData_${selectedManager}_${planEffectiveDateString}`;
+
+            currentStaffList.forEach(empName => {
+                const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, '');
+                metrics.forEach(metric => {
+                    metric.fields.forEach(field => {
+                        const fieldKeyLower = field.key.toLowerCase();
+                        const ndpId = `ndp_${inputIdPrefix}_${metric.key}_${fieldKeyLower}`;
+                        planDataToSave[`p_${inputIdPrefix}_${metric.key}_${fieldKeyLower}`] = getNumValue(ndpId);
+                    });
+                });
+            });
+            planDataToSave['invPlanInvestors'] = getNumValue('invPlanInvestors');
+            planDataToSave['invPlanAmount'] = getNumValue('invPlanAmount');
+            planDataToSave['otherNotes'] = document.getElementById('otherNotes').value;
+
+            try { localStorage.setItem(storageKey, JSON.stringify(planDataToSave)); alert(`Plan saved for ${planEffectiveDateString}.`); console.log(`Plan saved to key: ${storageKey}`); return true; }
+            catch (e) { console.error("Error saving plan:", e); alert("Error saving next day's plan."); return false; }
+        }
+
+
+        // --- Generate Analysis ---
+        function generateAnalysisPoints() {
+             console.log("Generating analysis points...");
+             const selectedManager = document.getElementById('managerName').value;
+             const currentStaffList = managerStaff[selectedManager] || [];
+             const analysisPoints = [];
+             currentStaffList.forEach(empName => {
+                 const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, '');
+                 let hasShortfall = false;
+                 metrics.forEach(metric => {
+                     metric.fields.forEach(field => {
+                         const fieldKeyLower = field.key.toLowerCase();
+                         const planId = `p_${inputIdPrefix}_${metric.key}_${fieldKeyLower}`;
+                         const achieveId = `a_${inputIdPrefix}_${metric.key}_${fieldKeyLower}`;
+                         const pVal = getNumValue(planId); const aVal = getNumValue(achieveId);
+                         const difference = aVal - pVal;
+                         if (difference < 0) {
+                             if (!hasShortfall) { hasShortfall = true; }
+                             const pointText = `${empName}: ${metric.name} ${field.name} ${difference} (Plan: ${pVal}, Actual: ${aVal})`;
+                             analysisPoints.push({ text: pointText, type: 'shortfall' });
+                         }
+                     });
+                 });
+             });
+             console.log("Analysis points generated:", analysisPoints.length);
+             return analysisPoints;
+         }
+
+        // --- Main Button Action ---
+        function generateAndSaveReport() {
+             console.log("Generate button clicked.");
+             let isValid = true; /* ... Validation ... */ if (!isValid) return;
+             const manager = document.getElementById('managerName').value; if (!manager) { alert("Please select a Manager."); return; }
+             const currentStaffList = managerStaff[manager] || [];
+             const reportDate = document.getElementById('reportDate').value;
+             let reportSummaryString = ""; const analysisOutputDiv = document.getElementById('analysisOutput');
+
+            // --- Generate summary string ---
+            reportSummaryString += `*MANAGER DAILY REPORT (For Date: ${reportDate})*\n------------------------------------\n*Manager:* ${manager}\n*Date of Achievement:* ${reportDate}\n------------------------------------\n\n`;
+            const totals = { p: {}, a: {} }; metrics.forEach(metric => metric.fields.forEach(field => { const key = `${metric.key}_${field.key.toLowerCase()}`; totals.p[key] = 0; totals.a[key] = 0; }));
+            reportSummaryString += "*Performance Summary (Plan vs Achievement for " + reportDate + ")*\n\n";
+            currentStaffList.forEach(empName => { const inputIdPrefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, ''); reportSummaryString += `*${empName}*\n`; metrics.forEach(metric => { metric.fields.forEach(field => { const fieldKeyLower = field.key.toLowerCase(); const pId = `p_${inputIdPrefix}_${metric.key}_${fieldKeyLower}`; const aId = `a_${inputIdPrefix}_${metric.key}_${fieldKeyLower}`; const pVal = getNumValue(pId); const aVal = getNumValue(aId); totals.p[`${metric.key}_${fieldKeyLower}`] += pVal; totals.a[`${metric.key}_${fieldKeyLower}`] += aVal; reportSummaryString += `  - ${metric.name} ${field.name}: ${pVal} (Plan) vs ${aVal} (Done) | ${calculateAchievement(pVal, aVal)}\n`; }); }); reportSummaryString += "\n"; });
+            reportSummaryString += `------------------------------------\n*TOTALS (Plan vs Achievement for ${reportDate})*\n`;
+            metrics.forEach(metric => metric.fields.forEach(field => { const key = `${metric.key}_${field.key.toLowerCase()}`; reportSummaryString += `  - Total ${metric.name} ${field.name}: ${totals.p[key]} (Plan) vs ${totals.a[key]} (Done) | ${calculateAchievement(totals.p[key], totals.a[key])}\n`; }));
+            reportSummaryString += `------------------------------------\n\n`;
+
+            // --- Display Analysis ---
+            const analysisPoints = generateAnalysisPoints(); analysisOutputDiv.innerHTML = '';
+            if (analysisPoints.length > 0) { analysisPoints.forEach(point => { if (point.type !== 'spacer') { const p = document.createElement('div'); p.classList.add('analysis-point'); p.textContent = point.text; if (point.type === 'shortfall') p.classList.add('shortfall'); analysisOutputDiv.appendChild(p); } }); }
+            else { analysisOutputDiv.innerHTML = '<p style="color: #198754;">No shortfalls found compared to plan for ' + reportDate + '!</p>'; }
+            reportSummaryString += "*Performance Analysis for " + reportDate + ":*\n";
+            if (analysisPoints.length > 0) { analysisPoints.forEach(point => { if (point.type === 'shortfall') reportSummaryString += `- ${point.text}\n`; }); } else { reportSummaryString += "- No shortfalls found.\n"; }
+            reportSummaryString += "\n";
+
+            // --- Add Custom Plan Info to Summary ---
+            const invInvestors = document.getElementById('invPlanInvestors').value; const invAmount = document.getElementById('invPlanAmount').value; const notes = document.getElementById('otherNotes').value;
+            reportSummaryString += `*Next Day's Other Plans (As Entered Now for ${document.getElementById('nextDayDateDisplay').textContent}):*\n`;
+            reportSummaryString += `  - Investment Plan - Investors: ${invInvestors || 'N/A'}\n  - Investment Plan - Amount: ₹${invAmount || 'N/A'}\n`;
+            if (notes.trim()) reportSummaryString += `  - Notes: ${notes.trim()}\n`;
+            reportSummaryString += `\nGenerated by Software by Umesh Tonpe`;
+
+            // --- Show Summary ---
+            document.getElementById('reportOutput').innerText = reportSummaryString; document.getElementById('reportOutputContainer').style.display = 'block'; document.getElementById('copyButton').style.display = 'inline-block';
+
+            // --- Save Next Day Plan & Update UI for Next Cycle ---
+            const planSavedSuccessfully = saveNextDayPlanData();
+             if (planSavedSuccessfully) {
+                // Clear Next Day Plan inputs (ready for the day after)
+                document.querySelectorAll('#nextDayPlanTable input[type="text"], #nextDayPlanSection input[type=number], #nextDayPlanSection textarea').forEach(input => input.value = '');
+                // Clear Achievement table
+                document.querySelectorAll('#achievementTable input[type="text"]').forEach(input => input.value = '');
+                // Advance UI Date
+                const reportDateElement = document.getElementById('reportDate');
+                let currentReportDate = new Date(reportDateElement.value);
+                currentReportDate.setDate(currentReportDate.getDate() + 1);
+                reportDateElement.value = currentReportDate.toISOString().split('T')[0];
+                // Load plan for the new date (now today)
+                loadPlanDataForReportDate();
+                updateNextDayDateDisplay();
+            }
+            console.log("Generate and Save finished.");
+         }
+
+        // --- Copy for WhatsApp ---
+        function copyReport() { const reportText = document.getElementById('reportOutput').innerText; if (!reportText) { alert("Please generate the report data first."); return; } navigator.clipboard.writeText(reportText).then(() => { alert('Report summary copied!'); }).catch(err => { alert('Could not copy report summary.'); }); }
+
+        // --- **VERIFIED PDF Generation with jsPDF-AutoTable (v6.5)** ---
+        async function generatePdfWithAutoTable() {
+            console.log("Starting PDF generation v6.5...");
+            const { jsPDF } = window.jspdf;
+            if (typeof jsPDF.API.autoTable !== 'function') { alert("Error: PDF AutoTable plugin not loaded."); console.error("AutoTable not found."); return; }
+
+            const manager = document.getElementById('managerName').value;
+            const reportDate = document.getElementById('reportDate').value; // Achievement Date
+            const pdfButton = document.getElementById('pdfButton');
+            if (!manager || !reportDate) { alert("Please select Manager and Report Date."); return; }
+            const currentStaffList = managerStaff[manager] || [];
+            if(currentStaffList.length === 0) { alert("No staff found for selected manager."); return; }
+            pdfButton.innerText = 'Generating PDF...'; pdfButton.disabled = true;
+
+            const nextDayForPlanInput = new Date(reportDate);
+            nextDayForPlanInput.setDate(nextDayForPlanInput.getDate() + 1);
+            const nextDayPlanDateString = nextDayForPlanInput.toLocaleDateString('en-CA');
+
+            try {
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                let currentY = 10; const pageMargin = 8; const pageWidth = doc.internal.pageSize.getWidth(); const pageHeight = doc.internal.pageSize.getHeight(); const contentWidth = pageWidth - 2 * pageMargin;
+                const lineSpacing = 4; const tableTitleSpacing = 3; const sectionSpacing = 5;
+
+                // 1. Add Header Image
+                 const imgElement = document.getElementById('headerImage');
+                 let imageAdded = false;
+                 if (imgElement && imgElement.src && imgElement.complete && imgElement.naturalHeight > 0) {
+                     try {
+                         const imgData = await new Promise((resolve) => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0); resolve(canvas.toDataURL('image/jpeg', 0.9)); }; img.onerror = () => resolve(null); img.src = imgElement.src; });
+                         if(imgData){ const tempImg = new Image(); await new Promise(resolve => { tempImg.onload = resolve; tempImg.src = imgData;}); const imgProps = {width: tempImg.width, height: tempImg.height}; const imgWidth = Math.min(contentWidth * 0.8, imgProps.width); const imgHeight = (imgProps.height * imgWidth) / imgProps.width; const imgX = (pageWidth - imgWidth) / 2; doc.addImage(imgData, 'JPEG', imgX, pageMargin, imgWidth, imgHeight); currentY = pageMargin + imgHeight + 5; imageAdded = true; }
+                     } catch (imgError) { console.warn("Header image error:", imgError); }
+                 }
+                 if (!imageAdded) { doc.setFontSize(9); doc.text("Anik Financial Services Pvt. Ltd.", pageMargin, currentY); currentY += 6; }
+
+
+                // 2. Report Info
+                doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.text("MANAGER DAILY REPORT", pageWidth / 2, currentY, { align: 'center' }); currentY += 6;
+                doc.setFontSize(9); doc.setFont(undefined, 'normal');
+                doc.text(`Manager: ${manager}`, pageMargin, currentY);
+                doc.text(`Date of Achievement: ${reportDate}`, pageWidth - pageMargin, currentY, { align: 'right' });
+                currentY += sectionSpacing;
+
+                // 3. PDF Table Head Definition Function
+                const getPdfHead = (mainTitleSuffix = 'Target', subTitleSuffix = 'Value') => {
+                    let headDef = [ [ { content: 'Name of Staff', rowSpan: 2, styles: { halign: 'left', valign: 'middle' } } ] , [] ];
+                     metrics.forEach(metric => {
+                         if (metric.key === 'meet') { headDef[0].push({ content: `${metric.name} Nos ${mainTitleSuffix}`, rowSpan: 2, styles: { valign: 'middle', halign: 'center' } }); }
+                         else { headDef[0].push({ content: `${metric.name} ${mainTitleSuffix}`, colSpan: 2, styles: { halign: 'center' } }); metric.fields.forEach(field => { headDef[1].push({ content: `${field.name} ${subTitleSuffix}` }); }); }
+                     }); return headDef;
+                 };
+
+                // 4. Common AutoTable Options
+                const commonTableOptions = { startY: currentY, theme: 'grid', margin: { left: pageMargin, right: pageMargin }, styles: { fontSize: 7, cellPadding: 1, valign: 'middle', overflow: 'linebreak' }, headStyles: { fillColor: [230, 237, 247], textColor: [20, 50, 90], fontStyle: 'bold', halign: 'center', valign: 'middle', fontSize: 7, lineWidth: 0.15, lineColor: [190, 200, 210] }, bodyStyles: { fontSize: 6.5, textColor: [30, 30, 30], lineWidth: 0.1, lineColor: [210, 210, 210] }, alternateRowStyles: { fillColor: [250, 250, 250] }, columnStyles: { 0: { cellWidth: 35, halign: 'left' }, 1: { halign: 'right', cellWidth: 15 }, 3: { halign: 'right', cellWidth: 15 }, 5: { halign: 'right', cellWidth: 15 }, 7: { halign: 'right', cellWidth: 15 }, 2: { halign: 'right', cellWidth: 22 }, 4: { halign: 'right', cellWidth: 22 }, 6: { halign: 'right', cellWidth: 22 }, 8: { halign: 'right', cellWidth: 22 }, 9: { halign: 'right', cellWidth: 15 } }, tableLineWidth: 0.15, tableLineColor: [120, 120, 120], didDrawPage: data => { if (data.pageNumber > 1) currentY = pageMargin; } };
+
+                // Function to check page break
+                 const checkPdfPageBreak = (neededHeight) => { if (currentY + neededHeight > pageHeight - pageMargin - 10) { doc.addPage(); currentY = pageMargin; console.log("PDF page break added."); } };
+
+                // 5. "Plan for Report Date" Table
+                const planBody = currentStaffList.map(empName => { const prefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, ''); const row = [empName]; metrics.forEach(m => m.fields.forEach(f => row.push(getNumValue(`p_${prefix}_${m.key}_${f.key.toLowerCase()}`)))); return row; });
+                checkPdfPageBreak(20);
+                doc.setFontSize(9); doc.setFont(undefined, 'bold'); doc.text(`Plan (for ${reportDate})`, pageMargin, currentY); currentY += tableTitleSpacing;
+                doc.autoTable({ ...commonTableOptions, head: getPdfHead('Target', 'Target'), body: planBody, startY: currentY });
+                currentY = doc.autoTable.previous.finalY + sectionSpacing;
+
+                // 6. "Achievement for Report Date" Table
+                checkPdfPageBreak(20);
+                const achievementBody = currentStaffList.map(empName => { const prefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, ''); const row = [empName]; metrics.forEach(m => m.fields.forEach(f => row.push(getNumValue(`a_${prefix}_${m.key}_${f.key.toLowerCase()}`)))); return row; });
+                doc.setFontSize(9); doc.setFont(undefined, 'bold'); doc.text(`Achievement (for ${reportDate})`, pageMargin, currentY); currentY += tableTitleSpacing;
+                doc.autoTable({ ...commonTableOptions, head: getPdfHead('Done', 'Done'), body: achievementBody, startY: currentY });
+                currentY = doc.autoTable.previous.finalY + sectionSpacing;
+
+                // 7. "Next Day's Plan" Table
+                 checkPdfPageBreak(20);
+                 const nextDayPlanBody = currentStaffList.map(empName => { const prefix = empName.toLowerCase().replace(/^(mrs\.|mr\.|miss\.)\s*/, '').replace(/\s+fx$/, 'fx').replace(/[^a-z0-9]/gi, ''); const row = [empName]; metrics.forEach(m => m.fields.forEach(f => row.push(getNumValue(`ndp_${prefix}_${m.key}_${f.key.toLowerCase()}`)))); return row; });
+                 doc.setFontSize(9); doc.setFont(undefined, 'bold'); doc.text(`Next Day's Plan (for ${nextDayPlanDateString})`, pageMargin, currentY); currentY += tableTitleSpacing;
+                 doc.autoTable({ ...commonTableOptions, head: getPdfHead('Target', 'Target'), body: nextDayPlanBody, startY: currentY });
+                 currentY = doc.autoTable.previous.finalY + sectionSpacing;
+
+                // 8. Custom Plan Data for Next Day
+                 checkPdfPageBreak(15);
+                 doc.setFontSize(8); doc.setFont(undefined, 'bold'); doc.text(`Other Plans (for ${nextDayPlanDateString}):`, pageMargin, currentY); currentY += lineSpacing;
+                 doc.setFont(undefined, 'normal'); doc.setFontSize(7.5); // Match table body size
+                 doc.text(`Investment Plan - Investors #: ${document.getElementById('invPlanInvestors').value || 'N/A'}`, pageMargin + 5, currentY); currentY += lineSpacing;
+                 doc.text(`Investment Plan - Amount Rs: ${document.getElementById('invPlanAmount').value || 'N/A'}`, pageMargin + 5, currentY); currentY += lineSpacing;
+                 const notes = document.getElementById('otherNotes').value;
+                 if(notes.trim()) {
+                     doc.text(`Additional Notes:`, pageMargin + 5, currentY); currentY += lineSpacing;
+                     const splitNotes = doc.splitTextToSize(notes.trim(), contentWidth - 10);
+                      checkPdfPageBreak(splitNotes.length * 3.5); // Check space for notes
+                     doc.text(splitNotes, pageMargin + 5, currentY);
+                     currentY += splitNotes.length * 3.5;
+                 }
+                 currentY += sectionSpacing;
+
+                // 9. Analysis Section
+                 checkPdfPageBreak(15);
+                 const analysisPoints = generateAnalysisPoints(); let analysisText = "";
+                 if (analysisPoints.length > 0) { analysisPoints.forEach(point => { if (point.type === 'shortfall') analysisText += `- ${point.text}\n`; }); } else { analysisText = "- No shortfalls found."; }
+                 doc.setFontSize(8); doc.setFont(undefined, 'bold'); doc.text(`Performance Analysis (for ${reportDate}):`, pageMargin, currentY); currentY += lineSpacing;
+                 doc.setFontSize(7.5); doc.setFont(undefined, 'normal');
+                 const splitAnalysis = doc.splitTextToSize(analysisText, contentWidth);
+                  checkPdfPageBreak(splitAnalysis.length * 4); // Check space for analysis
+                 doc.text(splitAnalysis, pageMargin, currentY);
+
+                // 10. Footer and Save
+                const pageCount = doc.internal.getNumberOfPages(); for (let i = 1; i <= pageCount; i++) { doc.setPage(i); doc.setFontSize(7); doc.setTextColor(120); doc.text(`Software by Umesh Tonpe`, pageWidth / 2, pageHeight - 5, { align: 'center' }); doc.text(`Page ${i} of ${pageCount}`, pageWidth - pageMargin, pageHeight - 5, { align: 'right' }); }
+                doc.save(`Manager_Report_${manager}_${reportDate}.pdf`);
+                console.log("PDF Saved.");
+
+            } catch (error) { console.error("Error during PDF generation:", error); alert("Failed to generate PDF. Check console (F12)."); }
+            finally { pdfButton.innerText = 'Download PDF'; pdfButton.disabled = false; console.log("PDF generation finished."); }
+        }
+
+    </script>
+</body>
+</html>
